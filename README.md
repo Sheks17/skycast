@@ -2,7 +2,7 @@
 
 > A weather app that doesn't just tell you the temperature — it tells you what to do about it. Smart contextual notifications, dynamic weather themes, bilingual support, and an AI-powered outfit analyzer.
 
-**[Live Demo →](https://skycast.vercel.app)**
+**[Live Demo →](https://skycast-jade.vercel.app/)**
 
 ---
 
