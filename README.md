@@ -23,6 +23,10 @@
 ### Night Mode
 ![SkyCast Night](./screenshots/night.png)
 
+### Sunny Mode
+![SkyCast Sunny](./screenshots/sunny.png)
+
+
 
 
 ---
