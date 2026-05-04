@@ -100,10 +100,7 @@ export default function App() {
       {/* Error */}
       {error && !loading && (
         <div className="text-center py-16">
-          <p className="text-4xl mb-4">🌐</p>
-          <p style={{ color: theme.text }} className="font-bold text-lg mb-2"
-            dangerouslySetInnerHTML={{ __html: "" }}
-          >
+          <p style={{ color: theme.text }} className="font-bold text-lg mb-2">
             {lang === "fr" ? "Ville introuvable" : "City not found"}
           </p>
           <p style={{ color: theme.muted }} className="text-sm">
