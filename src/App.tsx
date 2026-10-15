@@ -3,29 +3,36 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Sparkles } from "lucide-react";
 import { useWeather } from "./hooks/useWeather";
 import { getTheme } from "./utils/weatherThemes";
-import { generateInsights } from "./utils/aiInsights";
+import { generateInsights } from "./utils/weatherInsights";
+import { displayTemperature, errorMessage, isNightAt } from "./utils/weather";
 import SearchBar from "./components/SearchBar";
 import HeroCard from "./components/HeroCard";
 import StatPills from "./components/StatPills";
 import InsightCard from "./components/InsightCard";
 import ForecastStrip from "./components/ForecastStrip";
-import OutfitAnalyzer from "./components/OutfitAnalyzer";
+import ClothingAdvice from "./components/ClothingAdvice";
 
 export default function App() {
   const [city, setCity] = useState<string | null>(null);
   const [lang, setLang] = useState("en");
   const [unit, setUnit] = useState<"F" | "C">("F");
 
-  const { weather, forecast, loading, error } = useWeather(city);
+  const { weather, forecast, loading, refreshing, error, forecastError, usedFallback, retry } = useWeather(city);
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 30000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  useEffect(() => { document.documentElement.lang = lang; }, [lang]);
 
   const toDisplay = (f: number) =>
-    unit === "C" ? Math.round((f - 32) * 5 / 9) : f;
+    displayTemperature(f, unit);
 
   const unitSymbol = unit === "C" ? "°C" : "°F";
 
-  const isNight = weather
-    ? Date.now() / 1000 > weather.sunset || Date.now() / 1000 < weather.sunrise
-    : false;
+  const isNight = weather ? isNightAt(weather, now) : false;
 
   const theme = weather
     ? getTheme(weather.condition, isNight)
@@ -33,14 +40,15 @@ export default function App() {
 
   const insights = weather
     ? generateInsights(
-        toDisplay(weather.temp),
-        toDisplay(weather.feelsLike),
+        weather.temp,
+        weather.feelsLike,
         weather.humidity,
         weather.windSpeed,
         weather.uvIndex,
         weather.condition,
         lang,
-        unit
+        unit,
+        isNight
       )
     : [];
 
@@ -50,7 +58,7 @@ export default function App() {
   }, [theme.bg]);
 
   return (
-    <div className="min-h-screen px-4 py-6 max-w-lg mx-auto">
+    <main className="min-h-screen px-4 py-6 max-w-lg mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <span
@@ -59,12 +67,13 @@ export default function App() {
         >
           SkyCast
         </span>
+        {refreshing && <span role="status" className="text-xs" style={{ color: theme.muted }}>{lang === "fr" ? "Actualisation…" : "Refreshing…"}</span>}
       </div>
 
       {/* Search + controls */}
       <div className="mb-8">
         <SearchBar
-          onSearch={setCity}
+          onSearch={(nextCity) => { if (nextCity === city) retry(); else setCity(nextCity); }}
           lang={lang}
           theme={theme}
           onToggleLang={() => setLang((l) => (l === "en" ? "fr" : "en"))}
@@ -79,14 +88,15 @@ export default function App() {
             }}
             className="text-xs font-mono px-4 py-1.5 rounded-full backdrop-blur-sm hover:opacity-80 transition-opacity"
           >
-            {unit === "F" ? "Switch to °C" : "Passer en °F"}
+            {lang === "fr" ? `Passer en °${unit === "F" ? "C" : "F"}` : `Switch to °${unit === "F" ? "C" : "F"}`}
           </button>
         </div>
       </div>
 
       {/* Loading */}
       {loading && (
-        <div className="space-y-4 animate-pulse">
+        <div className="space-y-4 animate-pulse" role="status">
+          <span className="sr-only">{lang === "fr" ? "Chargement de la météo…" : "Loading weather…"}</span>
           <div className="h-40 rounded-2xl" style={{ background: theme.card }} />
           <div className="grid grid-cols-3 gap-3">
             {[1, 2, 3].map((i) => (
@@ -99,20 +109,19 @@ export default function App() {
 
       {/* Error */}
       {error && !loading && (
-        <div className="text-center py-16">
+        <div className="text-center py-16" role="alert">
           <p style={{ color: theme.text }} className="font-bold text-lg mb-2">
-            {lang === "fr" ? "Ville introuvable" : "City not found"}
+            {lang === "fr" ? "Météo indisponible" : "Weather unavailable"}
           </p>
           <p style={{ color: theme.muted }} className="text-sm">
-            {lang === "fr"
-              ? "Vérifiez l'orthographe et réessayez."
-              : "Check the spelling and try again."}
+            {errorMessage(error, lang)}
           </p>
+          <button onClick={retry} style={{ color: theme.text }} className="mt-4 text-sm underline">{lang === "fr" ? "Réessayer" : "Retry"}</button>
         </div>
       )}
 
       {/* Weather content */}
-      {weather && !loading && (
+      {weather && !loading && !error && (
         <AnimatePresence mode="wait">
           <motion.div
             key={city ?? "geo"}
@@ -121,12 +130,14 @@ export default function App() {
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.4 }}
           >
+            {usedFallback && <p role="status" style={{ color: theme.muted }} className="text-xs text-center">{lang === "fr" ? "Position indisponible : météo de Montréal. Recherchez votre ville ci-dessus." : "Location unavailable: showing Montreal. Search for your city above."}</p>}
             <HeroCard
               weather={weather}
               theme={theme}
               lang={lang}
               toDisplay={toDisplay}
               unitSymbol={unitSymbol}
+              isNight={isNight}
             />
 
             <StatPills
@@ -135,6 +146,7 @@ export default function App() {
               uvIndex={weather.uvIndex}
               theme={theme}
               lang={lang}
+              unit={unit}
             />
 
             <div className="mb-6">
@@ -143,7 +155,7 @@ export default function App() {
                 className="font-bold text-base mb-3 flex items-center gap-2"
               >
                 <Sparkles size={18} strokeWidth={1.5} style={{ color: theme.muted }} />
-                {lang === "fr" ? "Conseils IA" : "AI Insights"}
+                {lang === "fr" ? "Conseils météo" : "Weather tips"}
               </h2>
               <div className="space-y-2">
                 {insights.map((insight, i) => (
@@ -158,12 +170,17 @@ export default function App() {
               lang={lang}
               toDisplay={toDisplay}
               unitSymbol={unitSymbol}
+              error={forecastError}
+              onRetry={retry}
             />
 
-            <OutfitAnalyzer weather={weather} theme={theme} lang={lang} unit={unit} />
+            <ClothingAdvice weather={weather} theme={theme} lang={lang} />
           </motion.div>
         </AnimatePresence>
       )}
-    </div>
+      <footer className="text-center text-xs pb-4" style={{ color: theme.muted }}>
+        {lang === "fr" ? "Données météo : " : "Weather data: "}<a href="https://openweathermap.org/" className="underline">OpenWeather</a>
+      </footer>
+    </main>
   );
 }

@@ -1,6 +1,7 @@
 import { MapPin } from "lucide-react";
-import { WeatherData } from "../hooks/useWeather";
-import { WeatherTheme } from "../utils/weatherThemes";
+import { getWeatherIcon } from "../utils/weather";
+import type { WeatherData } from "../utils/weather";
+import type { WeatherTheme } from "../utils/weatherThemes";
 
 interface Props {
   weather: WeatherData;
@@ -8,20 +9,10 @@ interface Props {
   lang: string;
   toDisplay: (f: number) => number;
   unitSymbol: string;
+  isNight: boolean;
 }
 
-function getConditionIcon(condition: string): string {
-  const c = condition.toLowerCase();
-  if (c.includes("thunder")) return "⛈️";
-  if (c.includes("rain") || c.includes("drizzle")) return "🌧️";
-  if (c.includes("snow")) return "❄️";
-  if (c.includes("mist") || c.includes("fog")) return "🌫️";
-  if (c.includes("cloud")) return "⛅";
-  if (c.includes("clear")) return "☀️";
-  return "🌤️";
-}
-
-export default function HeroCard({ weather, theme, lang, toDisplay, unitSymbol }: Props) {
+export default function HeroCard({ weather, theme, lang, toDisplay, unitSymbol, isNight }: Props) {
   const description = lang === "fr" ? weather.descriptionFr : weather.description;
 
   return (
@@ -32,19 +23,19 @@ export default function HeroCard({ weather, theme, lang, toDisplay, unitSymbol }
           style={{ color: theme.text, fontFamily: "Syne, sans-serif" }}
           className="text-2xl font-bold"
         >
-          {weather.city}, {weather.country}
+          {weather.city}{weather.country ? `, ${weather.country}` : ""}
         </h1>
       </div>
 
       <p style={{ color: theme.muted }} className="text-sm mb-6 capitalize">
-        {getConditionIcon(weather.condition)} {description}
+        {getWeatherIcon(weather.condition, isNight)} {description}
       </p>
 
       <div
         style={{
           color: theme.text,
           fontFamily: "Syne, sans-serif",
-          fontWeight: 100,
+          fontWeight: 400,
           fontSize: "clamp(80px, 18vw, 140px)",
           lineHeight: 1,
         }}

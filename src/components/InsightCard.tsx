@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
-import { Insight } from "../utils/aiInsights";
-import { WeatherTheme } from "../utils/weatherThemes";
+import type { Insight } from "../utils/weatherInsights";
+import type { WeatherTheme } from "../utils/weatherThemes";
 
 interface Props {
   insight: Insight;
